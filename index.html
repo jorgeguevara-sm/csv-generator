@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de CSV Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Generador de CSV</h1>
+            <p class="subtitle">Herramienta rápida y segura para generar datos de prueba</p>
+        </header>
+
+        <main class="card">
+            <!-- Global Settings -->
+            <!-- Global Settings -->
+            <div class="global-settings-panel">
+                <div class="input-group">
+                    <label>Separador de Columnas</label>
+                    <select id="global-separator">
+                        <option value=",">Coma (,)</option>
+                        <option value=";">Punto y coma (;)</option>
+                        <option value="|">Pipe (|)</option>
+                        <option value="tab">Tabulador (\t)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Caracter de Comillas</label>
+                    <select id="global-quote">
+                        <option value='"'>Comilla Doble (")</option>
+                        <option value="'">Comilla Simple (')</option>
+                        <option value="none">Ninguno</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Segment Controls -->
+            <div class="segments-container">
+                <div class="segments-tabs" id="segments-tabs">
+                    <!-- Tabs injected by JS -->
+                </div>
+                <div class="segment-controls">
+                    <div class="input-group">
+                        <label for="row-count">Filas del Segmento</label>
+                        <input type="number" id="row-count" value="100" min="1" max="1000000">
+                    </div>
+                    <button id="add-segment-btn" class="btn btn-secondary btn-sm" title="Agregar Segmento">
+                        + Segmento
+                    </button>
+                    <button id="delete-segment-btn" class="btn btn-danger btn-sm" title="Eliminar Segmento">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="controls-header">
+                <h3>Columnas del Segmento</h3>
+                <button id="add-column-btn" class="btn btn-secondary">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Agregar Columna
+                </button>
+            </div>
+
+            <!-- Dynamic Columns List -->
+            <div id="columns-container">
+                <!-- Columns will be added here by JS -->
+            </div>
+
+            <!-- Generate Action -->
+            <div class="action-bar" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <input type="file" id="import-config-file" accept=".json" style="display: none;">
+                <button id="import-btn" class="btn btn-secondary btn-lg">
+                    📂 Cargar Config
+                </button>
+                <button id="export-btn" class="btn btn-secondary btn-lg">
+                    💾 Guardar Config
+                </button>
+                <button id="generate-btn" class="btn btn-primary btn-lg" style="margin-left: auto;">
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Descargar CSV
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Templates for different column types -->
+    <template id="column-template">
+        <div class="column-item">
+            <div class="input-group">
+                <label>Nombre de Columna</label>
+                <input type="text" class="col-name" placeholder="ej. ID Usuario">
+            </div>
+            <div class="input-group">
+                <label>Tipo de Dato</label>
+                <select class="col-type">
+                    <option value="number">Número</option>
+                    <option value="text">Texto</option>
+                    <option value="email">Email</option>
+                    <option value="date">Fecha</option>
+                    <option value="datetime">Fecha y Hora</option>
+                    <option value="categorical">Categórico (Grupos)</option>
+                    <option value="boolean">Booleano</option>
+                    <option value="uuid">UUID</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Configuración</label>
+                <div class="config-options">
+                    <!-- Config inputs injected here -->
+                </div>
+            </div>
+            <button class="btn btn-danger remove-col-btn" title="Eliminar columna">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+        </div>
+    </template>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
