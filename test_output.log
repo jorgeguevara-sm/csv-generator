@@ -1,0 +1,13 @@
+
+Running 8 tests using 2 workers
+
+  ✓  1 [chromium] › tests/csv-generator.spec.js:8:3 › Generador de CSV › should have the correct title (459ms)
+  ✓  2 [chromium] › tests/csv-generator.spec.js:13:3 › Generador de CSV › should initialize with default columns (470ms)
+  ✓  3 [chromium] › tests/csv-generator.spec.js:22:3 › Generador de CSV › should add a new column (470ms)
+  ✓  4 [chromium] › tests/csv-generator.spec.js:29:3 › Generador de CSV › should remove a column (682ms)
+  ✓  5 [chromium] › tests/csv-generator.spec.js:35:3 › Generador de CSV › should add and delete segments (641ms)
+  ✓  6 [chromium] › tests/csv-generator.spec.js:49:3 › Generador de CSV › should change column type and show correct config (459ms)
+  ✓  7 [chromium] › tests/csv-generator.spec.js:62:3 › Generador de CSV › should download CSV when generate button is clicked (436ms)
+  ✓  8 [chromium] › tests/csv-generator.spec.js:69:3 › Generador de CSV › should export configuration (516ms)
+
+  8 passed (4.7s)
