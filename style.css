@@ -281,7 +281,7 @@ select:focus {
     border-bottom: 1px solid var(--border);
     padding: 1.5rem 2rem;
     display: flex;
-    gap: 2rem;
+    gap: 1.5rem;
     align-items: center;
     border-radius: var(--radius) var(--radius) 0 0;
 }
@@ -407,6 +407,27 @@ textarea.config-area {
     display: none !important;
 }
 
+.lang-selector {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 1000;
+}
+
+.lang-selector .btn {
+    padding: 0.25rem 0.75rem;
+    min-width: 40px;
+    justify-content: center;
+}
+
+.lang-selector .btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
 /* Refined Config Inputs */
 .method-panel {
     background: rgba(255, 255, 255, 0.03);
@@ -416,4 +437,35 @@ textarea.config-area {
 
 .core-settings input {
     font-size: 0.85rem;
+}
+
+/* Preview Table Styles */
+#preview-table th, #preview-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+#preview-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+#preview-table tr:last-child td {
+    border-bottom: none;
+}
+
+#preview-table td {
+    color: var(--text-main);
+    white-space: nowrap;
+}
+.column-item {
+    cursor: grab;
+}
+.column-item.over {
+    border: 2px dashed var(--primary);
 }

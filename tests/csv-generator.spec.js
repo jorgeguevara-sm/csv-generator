@@ -63,7 +63,7 @@ test.describe('Generador de CSV', () => {
     const downloadPromise = page.waitForEvent('download');
     await page.click('#generate-btn');
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/etl_data_.*\.csv/);
+    expect(download.suggestedFilename()).toMatch(/data_.*\.csv/);
   });
 
   test('should export configuration', async ({ page }) => {

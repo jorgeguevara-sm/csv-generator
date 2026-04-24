@@ -12,6 +12,11 @@
 </head>
 
 <body>
+        <div class="lang-selector">
+            <button onclick="setLanguage('es')" class="btn btn-secondary btn-sm" id="lang-es">ES</button>
+            <button onclick="setLanguage('en')" class="btn btn-secondary btn-sm" id="lang-en">EN</button>
+        </div>
+
     <div class="app-container">
         <header>
             <h1>Generador de CSV</h1>
@@ -21,9 +26,18 @@
         <main class="card">
             <!-- Global Settings -->
             <!-- Global Settings -->
-            <div class="global-settings-panel">
+            <div class="global-settings-panel" style="flex-wrap: wrap;">
                 <div class="input-group">
-                    <label>Separador de Columnas</label>
+                    <label id="export-format-label">Formato de Exportación</label>
+                    <select id="export-format" onchange="toggleFormatSettings()">
+                        <option value="csv">CSV</option>
+                        <option value="json">JSON</option>
+                        <option value="sql">SQL (INSERT)</option>
+                    </select>
+                </div>
+                <div id="csv-settings" class="input-group" style="display: flex; gap: 1.5rem;">
+                    <div class="input-group">
+                        <label>Separador de Columnas</label>
                     <select id="global-separator">
                         <option value=",">Coma (,)</option>
                         <option value=";">Punto y coma (;)</option>
@@ -31,13 +45,18 @@
                         <option value="tab">Tabulador (\t)</option>
                     </select>
                 </div>
-                <div class="input-group">
-                    <label>Caracter de Comillas</label>
-                    <select id="global-quote">
-                        <option value='"'>Comilla Doble (")</option>
-                        <option value="'">Comilla Simple (')</option>
-                        <option value="none">Ninguno</option>
-                    </select>
+                    <div class="input-group">
+                        <label>Caracter de Comillas</label>
+                        <select id="global-quote">
+                            <option value='"'>Comilla Doble (")</option>
+                            <option value="'">Comilla Simple (')</option>
+                            <option value="none">Ninguno</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="sql-settings" class="input-group hidden">
+                    <label id="sql-table-label">Nombre de la Tabla SQL</label>
+                    <input type="text" id="sql-table-name" value="mi_tabla" placeholder="nombre_tabla">
                 </div>
             </div>
 
@@ -78,6 +97,19 @@
                 <!-- Columns will be added here by JS -->
             </div>
 
+            <!-- Preview Section -->
+            <div class="preview-section" style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                <h3 id="preview-title">Vista Previa</h3>
+                <div class="preview-table-container" style="overflow-x: auto; margin-top: 1rem; background: rgba(15, 23, 42, 0.3); border-radius: 8px;">
+                    <table id="preview-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr id="preview-header"></tr>
+                        </thead>
+                        <tbody id="preview-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Generate Action -->
             <div class="action-bar" style="display: flex; gap: 1rem; flex-wrap: wrap;">
                 <input type="file" id="import-config-file" accept=".json" style="display: none;">
@@ -110,7 +142,12 @@
                 <select class="col-type">
                     <option value="number">Número</option>
                     <option value="text">Texto</option>
+                    <option value="fullname">Nombre Completo</option>
                     <option value="email">Email</option>
+                    <option value="phone">Teléfono</option>
+                    <option value="city">Ciudad</option>
+                    <option value="country">País</option>
+                    <option value="address">Dirección</option>
                     <option value="date">Fecha</option>
                     <option value="datetime">Fecha y Hora</option>
                     <option value="categorical">Categórico (Grupos)</option>

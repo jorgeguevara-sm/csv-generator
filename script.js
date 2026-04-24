@@ -1,6 +1,140 @@
 /**
- * CSV Generator Implementation
+ * CSV Generator Implementation - Pro Version
  */
+
+// --- i18n ---
+
+const TRANSLATIONS = {
+    es: {
+        title: "Generador de CSV",
+        subtitle: "Herramienta rápida y segura para generar datos de prueba",
+        columnSeparator: "Separador de Columnas",
+        quoteChar: "Caracter de Comillas",
+        segmentRows: "Filas del Segmento",
+        addSegment: "+ Segmento",
+        segmentColumns: "Columnas del Segmento",
+        addColumn: "Agregar Columna",
+        importConfig: "📂 Cargar Config",
+        exportConfig: "💾 Guardar Config",
+        downloadCSV: "Descargar CSV",
+        downloadJSON: "Descargar JSON",
+        downloadSQL: "Descargar SQL",
+        colName: "Nombre de Columna",
+        colType: "Tipo de Dato",
+        config: "Configuración",
+        preview: "Vista Previa",
+        tableName: "Nombre de la Tabla SQL",
+        exportFormat: "Formato de Exportación",
+        types: {
+            number: "Número",
+            text: "Texto",
+            fullname: "Nombre Completo",
+            email: "Email",
+            phone: "Teléfono",
+            city: "Ciudad",
+            country: "País",
+            address: "Dirección",
+            date: "Fecha",
+            datetime: "Fecha y Hora",
+            categorical: "Categórico (Grupos)",
+            boolean: "Booleano",
+            uuid: "UUID"
+        }
+    },
+    en: {
+        title: "CSV Generator",
+        subtitle: "Fast and secure tool to generate test data",
+        columnSeparator: "Column Separator",
+        quoteChar: "Quote Character",
+        segmentRows: "Segment Rows",
+        addSegment: "+ Segment",
+        segmentColumns: "Segment Columns",
+        addColumn: "Add Column",
+        importConfig: "📂 Load Config",
+        exportConfig: "💾 Save Config",
+        downloadCSV: "Download CSV",
+        downloadJSON: "Download JSON",
+        downloadSQL: "Download SQL",
+        colName: "Column Name",
+        colType: "Data Type",
+        config: "Configuration",
+        preview: "Preview",
+        tableName: "SQL Table Name",
+        exportFormat: "Export Format",
+        types: {
+            number: "Number",
+            text: "Text",
+            fullname: "Full Name",
+            email: "Email",
+            phone: "Phone",
+            city: "City",
+            country: "Country",
+            address: "Address",
+            date: "Date",
+            datetime: "Date & Time",
+            categorical: "Categorical (Groups)",
+            boolean: "Boolean",
+            uuid: "UUID"
+        }
+    }
+};
+
+let currentLang = 'es';
+
+function t(key) {
+    const keys = key.split('.');
+    let result = TRANSLATIONS[currentLang];
+    for (const k of keys) {
+        if (!result) break;
+        result = result[k];
+    }
+    return result || key;
+}
+
+function updateUILanguage() {
+    document.title = t('title') + " Pro";
+    document.querySelector('h1').textContent = t('title');
+    document.querySelector('.subtitle').textContent = t('subtitle');
+
+    document.getElementById('export-format-label').textContent = t('exportFormat');
+    document.getElementById('sql-table-label').textContent = t('tableName');
+
+    const globalLabels = document.querySelectorAll('#csv-settings .input-group label');
+    if (globalLabels.length >= 2) {
+        globalLabels[0].textContent = t('columnSeparator');
+        globalLabels[1].textContent = t('quoteChar');
+    }
+
+    document.querySelector('label[for="row-count"]').textContent = t('segmentRows');
+
+    const addSegBtn = document.getElementById('add-segment-btn');
+    addSegBtn.innerHTML = `+ ${t('addSegment').replace('+ ', '')}`;
+
+    document.querySelector('.controls-header h3').textContent = t('segmentColumns');
+
+    const addColBtn = document.getElementById('add-column-btn');
+    addColBtn.innerHTML = `<svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg> ${t('addColumn')}`;
+
+    document.getElementById('import-btn').textContent = t('importConfig');
+    document.getElementById('export-btn').textContent = t('exportConfig');
+    document.getElementById('preview-title').textContent = t('preview');
+
+    // Update Template
+    const colTemplate = document.getElementById('column-template').content;
+    colTemplate.querySelectorAll('label')[0].textContent = t('colName');
+    colTemplate.querySelectorAll('label')[1].textContent = t('colType');
+    colTemplate.querySelectorAll('label')[2].textContent = t('config');
+
+    const typeSelect = colTemplate.querySelector('.col-type');
+    Array.from(typeSelect.options).forEach(opt => {
+        opt.textContent = t(`types.${opt.value}`);
+    });
+
+    toggleFormatSettings();
+    renderSegmentTabs();
+    renderColumns();
+    requestPreviewUpdate();
+}
 
 // --- State Management ---
 
@@ -36,169 +170,13 @@ const segmentsTabs = document.getElementById('segments-tabs');
 const addSegmentBtn = document.getElementById('add-segment-btn');
 const deleteSegmentBtn = document.getElementById('delete-segment-btn');
 
-const NAMES = ['Juan', 'Maria', 'Carlos', 'Ana', 'Luis', 'Sofia', 'Pedro', 'Laura', 'Diego', 'Elena'];
-const SURNAMES = ['Perez', 'Garcia', 'Lopez', 'Martinez', 'Rodriguez', 'Gonzalez', 'Fernandez', 'Gomez'];
-const DOMAINS = ['gmail.com', 'hotmail.com', 'outlook.com', 'company.com'];
-const SPECIAL_CHARS_MAP = { 'sp': ' ', 'tab': '\t', 'nl': '\n', 'cr': '\r', 'qt': '"', 'cm': ',' };
+const exportFormatSelect = document.getElementById('export-format');
+const csvSettings = document.getElementById('csv-settings');
+const sqlSettings = document.getElementById('sql-settings');
+const sqlTableNameInput = document.getElementById('sql-table-name');
 
-// --- Generators ---
-
-function getSeededRandom(seedStr) {
-    let h = 0x811c9dc5;
-    for (let i = 0; i < seedStr.length; i++) {
-        h ^= seedStr.charCodeAt(i);
-        h = Math.imul(h, 0x01000193);
-    }
-    h >>>= 0;
-    return (h / 4294967296);
-}
-
-const generators = {
-    number: (config) => {
-        const min = parseInt(config.min) || 0;
-        const max = parseInt(config.max) || 100;
-        const decimals = parseInt(config.decimals) || 0;
-        const separator = config.separator || '.';
-        let val = Math.random() * (max - min) + min;
-        let str = val.toFixed(decimals);
-        if (separator === ',') str = str.replace('.', ',');
-        return str;
-    },
-    text: (config, context) => {
-        const coreMethod = config.coreMethod || 'random';
-        const prefix = config.prefix || '';
-        const suffix = config.suffix || '';
-
-        let core = '';
-        if (coreMethod === 'random') {
-            core = generateRandomString(parseInt(config.length) || 12);
-        } else if (coreMethod === 'mask') {
-            core = generateFromMask(config.mask || '###-AAA');
-        } else if (coreMethod === 'increment') {
-            const start = parseInt(config.incStart) || 1;
-            const step = parseInt(config.incStep) || 1;
-            core = String(start + (context.index * step));
-        } else if (coreMethod === 'fixed') {
-            core = config.fixedValue || '';
-        }
-
-        let result = prefix + core + suffix;
-
-        if (config.specialChars && config.specialChars.length > 0) {
-            config.specialChars.forEach(code => {
-                const char = SPECIAL_CHARS_MAP[code];
-                if (char) {
-                    const posType = config.pos || 'rnd';
-                    let pos;
-                    if (posType === 'start') pos = 0;
-                    else if (posType === 'end') pos = result.length;
-                    else pos = Math.floor(Math.random() * (result.length + 1));
-                    result = result.slice(0, pos) + char + result.slice(pos);
-                }
-            });
-        }
-        return result;
-    },
-    categorical: (config, context) => {
-        const rawValues = config.values || '';
-        const values = rawValues.split(',').map(s => s.trim()).filter(s => s !== '');
-        if (values.length === 0) return '';
-
-        const mode = config.catMode || 'random';
-        if (mode === 'sequential') {
-            const blockSize = parseInt(config.blockSize) || 1;
-            const valueIndex = Math.floor(context.index / blockSize) % values.length;
-            return values[valueIndex];
-        } else {
-            return values[Math.floor(Math.random() * values.length)];
-        }
-    },
-    email: () => {
-        const name = NAMES[Math.floor(Math.random() * NAMES.length)].toLowerCase();
-        const surname = SURNAMES[Math.floor(Math.random() * SURNAMES.length)].toLowerCase();
-        const domain = DOMAINS[Math.floor(Math.random() * DOMAINS.length)];
-        return `${name}.${surname}${Math.floor(Math.random() * 100)}@${domain}`;
-    },
-    date: (config, context) => generateDate(config, false, context),
-    datetime: (config, context) => generateDate(config, true, context),
-    boolean: (config, context) => {
-        const mode = config.mode || 'random';
-
-        if (mode === 'fixed') {
-            return config.fixedValue === 'true' ? 'true' : 'false';
-        } else {
-            // Random or Blocked
-            const blockSize = parseInt(config.blockSize) || 1;
-            let rnd;
-            if (blockSize > 1) {
-                const blockKey = `bool_${Math.floor(context.index / blockSize)}`;
-                rnd = getSeededRandom(blockKey + (config.seedSalt || ''));
-            } else {
-                rnd = Math.random();
-            }
-            return rnd < 0.5 ? 'true' : 'false';
-        }
-    },
-    uuid: () => crypto.randomUUID()
-};
-
-function generateRandomString(length) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-    return result;
-}
-
-function generateFromMask(mask) {
-    let result = '';
-    for (let char of mask) {
-        if (char === '#') result += Math.floor(Math.random() * 10);
-        else if (char === 'A') result += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.charAt(Math.floor(Math.random() * 26));
-        else if (char === 'a') result += 'abcdefghijklmnopqrstuvwxyz'.charAt(Math.floor(Math.random() * 26));
-        else if (char === '*') result += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.charAt(Math.floor(Math.random() * 36));
-        else result += char;
-    }
-    return result;
-}
-
-function generateDate(config, withTime, context) {
-    const mode = config.mode || 'random';
-    const defaultFmt = withTime ? 'YYYY-MM-DD HH:mm:ss' : 'YYYY-MM-DD';
-
-    if (mode === 'fixed') {
-        const dateStr = config.fixedValue || new Date().toISOString();
-        return formatDate(new Date(dateStr), config.format || defaultFmt);
-    } else {
-        const start = config.start ? new Date(config.start) : new Date(2020, 0, 1);
-        const end = config.end ? new Date(config.end) : new Date();
-
-        const blockSize = parseInt(config.blockSize) || 1;
-        let rnd;
-        if (blockSize > 1) {
-            const blockKey = `date_${Math.floor(context.index / blockSize)}`;
-            rnd = getSeededRandom(blockKey + (config.seedSalt || ''));
-        } else {
-            rnd = Math.random();
-        }
-
-        const date = new Date(start.getTime() + rnd * (end.getTime() - start.getTime()));
-        return formatDate(date, config.format || defaultFmt);
-    }
-}
-
-function formatDate(date, format) {
-    const map = {
-        'YYYY': date.getFullYear(),
-        'MM': String(date.getMonth() + 1).padStart(2, '0'),
-        'DD': String(date.getDate()).padStart(2, '0'),
-        'HH': String(date.getHours()).padStart(2, '0'),
-        'mm': String(date.getMinutes()).padStart(2, '0'),
-        'ss': String(date.getSeconds()).padStart(2, '0')
-    };
-    let result = format;
-    for (const [key, val] of Object.entries(map)) result = result.replace(key, val);
-    return result;
-}
+const previewHeader = document.getElementById('preview-header');
+const previewBody = document.getElementById('preview-body');
 
 // --- Configuration Templates ---
 
@@ -284,7 +262,7 @@ const configTemplates = {
                     <option value="YYYY/MM/DD">YYYY/MM/DD</option>
                 </select>
             </div>
-            
+
             <div class="mode-panel mode-random config-row mt-1">
                  <input type="date" name="start" title="Inicio" value="2023-01-01">
                  <input type="date" name="end" title="Fin" value="${new Date().toISOString().split('T')[0]}">
@@ -308,7 +286,7 @@ const configTemplates = {
                     <option value="YYYY-MM-DDTHH:mm:ss">ISO 8601</option>
                 </select>
             </div>
-            
+
             <div class="mode-panel mode-random config-row mt-1">
                  <input type="date" name="start" title="Inicio" value="2023-01-01">
                  <input type="date" name="end" title="Fin" value="${new Date().toISOString().split('T')[0]}">
@@ -339,143 +317,111 @@ const configTemplates = {
             </div>
         </div>
     `,
-    email: '', uuid: ''
+    phone: `
+        <div class="config-row">
+            <input type="text" name="countryCode" placeholder="+34" value="+34" class="w-sm" title="Código de país">
+            <input type="number" name="length" placeholder="9" value="9" class="w-sm" title="Longitud del número">
+        </div>
+    `,
+    fullname: '', email: '', city: '', country: '', address: '', uuid: ''
 };
 
+// --- Web Worker Setup ---
+const worker = new Worker('worker.js');
 
-// --- Initialization ---
+worker.onmessage = function(e) {
+    const { result, format } = e.data;
+    const extension = format;
+    const type = format === 'csv' ? 'text/csv' : (format === 'json' ? 'application/json' : 'text/sql');
+    downloadFile(result, `data_${new Date().getTime()}.${extension}`, type);
 
-// Initialization moved to end of file to ensure all functions are defined
+    // Reset button state
+    generateBtn.disabled = false;
+    generateBtn.style.opacity = '1';
+};
 
+// --- Drag & Drop Logic ---
 
-// --- Event Listeners ---
+let draggedItem = null;
 
-addColumnBtn.addEventListener('click', () => {
-    saveCurrentSegmentState();
+function handleDragStart(e) {
+    draggedItem = this;
+    this.style.opacity = '0.4';
+    e.dataTransfer.effectAllowed = 'move';
+}
 
-    // Add new column to ALL segments to maintain consistency
-    appState.segments.forEach(seg => {
-        seg.columns.push({ name: 'Nueva Columna', type: 'text', config: {} });
+function handleDragEnd(e) {
+    this.style.opacity = '1';
+    columnsContainer.querySelectorAll('.column-item').forEach(item => {
+        item.classList.remove('over');
     });
-
-    renderColumns();
-});
-
-generateBtn.addEventListener('click', generateCSV);
-
-exportBtn.addEventListener('click', () => {
     saveCurrentSegmentState();
-    const exportData = {
-        version: 1,
-        createdAt: new Date().toISOString(),
-        global: {
-            separator: globalSeparatorSelect.value,
-            quote: globalQuoteSelect.value
-        },
-        segments: appState.segments
-    };
+    requestPreviewUpdate();
+}
 
-    const jsonStr = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `config_csv_generator_${new Date().getTime()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-});
+function handleDragOver(e) {
+    if (e.preventDefault) e.preventDefault();
+    return false;
+}
 
-importBtn.addEventListener('click', () => {
-    importInput.click();
-});
+function handleDragEnter(e) {
+    this.classList.add('over');
+}
 
-importInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+function handleDragLeave(e) {
+    this.classList.remove('over');
+}
 
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-        try {
-            const data = JSON.parse(ev.target.result);
-            if (data.segments) {
-                appState.segments = data.segments;
-                // Reset active to first
-                appState.activeSegmentId = data.segments[0].id;
+function handleDrop(e) {
+    if (e.stopPropagation) e.stopPropagation();
 
-                // Restore global settings
-                if (data.global) {
-                    globalSeparatorSelect.value = data.global.separator || ',';
-                    globalQuoteSelect.value = data.global.quote || '"';
-                }
+    if (draggedItem !== this) {
+        const allItems = Array.from(columnsContainer.querySelectorAll('.column-item'));
+        const fromIndex = allItems.indexOf(draggedItem);
+        const toIndex = allItems.indexOf(this);
 
-                renderSegmentTabs();
-                renderColumns();
-                alert('Configuración importada exitosamente.');
-            } else {
-                alert('Archivo de configuración inválido.');
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Error al leer el archivo de configuración.');
-        }
-    };
-    reader.readAsText(file);
-    e.target.value = ''; // Reset for re-use
-});
+        // Sync across all segments
+        appState.segments.forEach(seg => {
+            const col = seg.columns.splice(fromIndex, 1)[0];
+            seg.columns.splice(toIndex, 0, col);
+        });
 
-
-addSegmentBtn.addEventListener('click', () => {
-    saveCurrentSegmentState();
-    const newId = `seg-${appState.segments.length + 1}`;
-
-    // Get columns structure from the first segment (or any, since they are synced)
-    // We deep clone to avoid reference issues, but we want empty configs for new segment?
-    // Usually new segment should have same structure but maybe default configs or copied?
-    // For consistency with "new segment", let's copy the structure but reset configs potentially?
-    // For simplicity and utility: Copy structure AND config from current segment is often best.
-    const current = getActiveSegment();
-    const clonedCols = JSON.parse(JSON.stringify(current.columns));
-
-    appState.segments.push({
-        id: newId,
-        name: `Segmento ${appState.segments.length + 1}`,
-        rows: 50,
-        columns: clonedCols
-    });
-
-    appState.activeSegmentId = newId;
-    renderSegmentTabs();
-    renderColumns();
-});
-
-deleteSegmentBtn.addEventListener('click', () => {
-    if (appState.segments.length <= 1) return;
-    const idx = appState.segments.findIndex(s => s.id === appState.activeSegmentId);
-    appState.segments.splice(idx, 1);
-    appState.activeSegmentId = appState.segments[Math.max(0, idx - 1)].id;
-    renderSegmentTabs();
-    renderColumns();
-});
-
-rowCountInput.addEventListener('change', (e) => {
-    const seg = getActiveSegment();
-    seg.rows = parseInt(e.target.value) || 0;
-});
-
-document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('toggle-btn')) {
-        e.target.classList.toggle('active');
+        renderColumns();
+        requestPreviewUpdate();
     }
-});
+    return false;
+}
+
+function addDragEvents(item) {
+    item.draggable = true;
+    item.addEventListener('dragstart', handleDragStart);
+    item.addEventListener('dragenter', handleDragEnter);
+    item.addEventListener('dragover', handleDragOver);
+    item.addEventListener('dragleave', handleDragLeave);
+    item.addEventListener('drop', handleDrop);
+    item.addEventListener('dragend', handleDragEnd);
+}
 
 // --- UI Logic Helpers ---
+
+window.toggleFormatSettings = () => {
+    const format = exportFormatSelect.value;
+    csvSettings.classList.toggle('hidden', format !== 'csv');
+    sqlSettings.classList.toggle('hidden', format !== 'sql');
+
+    const text = format === 'csv' ? t('downloadCSV') : (format === 'json' ? t('downloadJSON') : t('downloadSQL'));
+    generateBtn.innerHTML = `
+        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        ${text}
+    `;
+}
 
 window.toggleCoreMethod = (select) => {
     const container = select.closest('.config-group');
     const method = select.value;
-
     container.querySelectorAll('.method-panel').forEach(el => el.classList.add('hidden'));
-
     if (method === 'random') container.querySelector('.method-random').classList.remove('hidden');
     else if (method === 'mask') container.querySelector('.method-mask').classList.remove('hidden');
     else if (method === 'increment') container.querySelector('.method-increment').classList.remove('hidden');
@@ -511,6 +457,40 @@ window.toggleBoolMode = (select) => {
     }
 }
 
+let previewDebounceTimer;
+function requestPreviewUpdate() {
+    clearTimeout(previewDebounceTimer);
+    previewDebounceTimer = setTimeout(updatePreview, 300);
+}
+
+function updatePreview() {
+    saveCurrentSegmentState();
+    const segment = getActiveSegment();
+    if (!segment) return;
+
+    // Update Header
+    previewHeader.innerHTML = '';
+    segment.columns.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col.name;
+        previewHeader.appendChild(th);
+    });
+
+    // Update Body (first 10 rows)
+    previewBody.innerHTML = '';
+    const rowsToShow = Math.min(10, segment.rows);
+    for (let i = 0; i < rowsToShow; i++) {
+        const tr = document.createElement('tr');
+        segment.columns.forEach(col => {
+            const td = document.createElement('td');
+            const context = { index: i, segment: segment };
+            td.textContent = generators[col.type](col.config, context);
+            tr.appendChild(td);
+        });
+        previewBody.appendChild(tr);
+    }
+}
+
 // --- State & Rendering ---
 
 function getActiveSegment() {
@@ -528,6 +508,7 @@ function renderSegmentTabs() {
             appState.activeSegmentId = seg.id;
             renderSegmentTabs();
             renderColumns();
+            requestPreviewUpdate();
         };
         segmentsTabs.appendChild(btn);
     });
@@ -538,6 +519,7 @@ function renderSegmentTabs() {
 
 function renderColumns() {
     const segment = getActiveSegment();
+    if (!segment) return;
     columnsContainer.innerHTML = '';
 
     segment.columns.forEach((col, index) => {
@@ -570,15 +552,16 @@ function renderColumns() {
 function createColumnNode(colData, index) {
     const clone = template.content.cloneNode(true);
     const item = clone.querySelector('.column-item');
+    addDragEvents(item);
 
     const nameInput = item.querySelector('.col-name');
     nameInput.value = colData.name;
     nameInput.oninput = (e) => {
         const newVal = e.target.value;
-        // Sync name across all segments
         appState.segments.forEach(seg => {
             if (seg.columns[index]) seg.columns[index].name = newVal;
         });
+        requestPreviewUpdate();
     };
 
     const typeSelect = item.querySelector('.col-type');
@@ -586,27 +569,23 @@ function createColumnNode(colData, index) {
     typeSelect.onchange = (e) => {
         saveCurrentSegmentState();
         const newType = e.target.value;
-
-        // Sync type across all segments and reset config
         appState.segments.forEach(seg => {
             if (seg.columns[index]) {
                 seg.columns[index].type = newType;
-                seg.columns[index].config = {}; // Reset config on type change
+                seg.columns[index].config = {};
             }
         });
-
         renderColumns();
+        requestPreviewUpdate();
     };
 
     item.querySelector('.remove-col-btn').onclick = () => {
         saveCurrentSegmentState();
-
-        // Remove column from ALL segments
         appState.segments.forEach(seg => {
             seg.columns.splice(index, 1);
         });
-
         renderColumns();
+        requestPreviewUpdate();
     };
 
     return item;
@@ -618,41 +597,27 @@ function updateConfigUI(type, container) {
 
 function saveCurrentSegmentState() {
     const segment = getActiveSegment();
+    if (!segment) return;
     const itemNodes = columnsContainer.querySelectorAll('.column-item');
     const newColumns = [];
-    itemNodes.forEach((item, idx) => {
+    itemNodes.forEach((item) => {
         const name = item.querySelector('.col-name').value;
         const type = item.querySelector('.col-type').value;
-
-        // We only really need to save the CONFIG here, 
-        // because name and type are synced in real-time/on-change events now.
-        // BUT, `saveCurrentSegmentState` is also used to rebuild `segment.columns` 
-        // entirely in some flows (like addSegmentBtn in original code, though we fixed that).
-        // Let's keep it robust but acknowledge that for name/type we rely on sync.
-
         const configContainer = item.querySelector('.config-options');
         const config = {};
         configContainer.querySelectorAll('input, select, textarea').forEach(input => {
+            if (!input.dataset.listenerAdded) {
+                input.addEventListener('input', requestPreviewUpdate);
+                input.dataset.listenerAdded = 'true';
+            }
             config[input.name] = input.value;
         });
         const activeToggles = configContainer.querySelectorAll('.toggle-btn.active');
         if (activeToggles.length > 0) {
             config.specialChars = Array.from(activeToggles).map(btn => btn.dataset.val);
         }
-
-        // We shouldn't construct newColumns array from scratch if we want to preserve 
-        // refs, but `segment.columns` is replaced anyway.
-        // IMPORTANT: We must ensure we don't accidentally revert the synchronization 
-        // if this runs after a sync operation but before a render.
-        // However, this is usually called BEFORE an operation.
-
         newColumns.push({ name, type, config });
     });
-
-    // Update ONLY the CURRENT segment configuration
-    // The structural properties (name, type) are assumed to be consistent 
-    // because we sync them. But `saveCurrentSegmentState` primarily captures 
-    // the user's *input values* (config) for the active view.
     segment.columns = newColumns;
     segment.rows = parseInt(rowCountInput.value) || 0;
 }
@@ -674,48 +639,144 @@ function restoreConfigValues(node, config) {
 
 // --- Generation ---
 
-function generateCSV() {
+function generateData() {
     saveCurrentSegmentState();
+    const format = exportFormatSelect.value;
 
-    const separator = globalSeparatorSelect.value === 'tab' ? '\t' : globalSeparatorSelect.value;
-    const quoteChar = globalQuoteSelect.value === 'none' ? '' : globalQuoteSelect.value;
+    // Visual feedback
+    generateBtn.disabled = true;
+    generateBtn.style.opacity = '0.7';
 
-    const allRows = [];
-    const headerSeg = appState.segments[0];
-    const headerRow = headerSeg.columns.map(c => escapeCSV(c.name, separator, quoteChar)).join(separator);
-    allRows.push(headerRow);
-
-    appState.segments.forEach(seg => {
-        for (let i = 0; i < seg.rows; i++) {
-            const rowData = seg.columns.map(col => {
-                const context = { index: i, segment: seg };
-                const val = generators[col.type](col.config, context);
-                return escapeCSV(String(val), separator, quoteChar);
-            });
-            allRows.push(rowData.join(separator));
+    worker.postMessage({
+        action: 'generate',
+        appState: appState,
+        config: {
+            separator: globalSeparatorSelect.value === 'tab' ? '\t' : globalSeparatorSelect.value,
+            quoteChar: globalQuoteSelect.value === 'none' ? '' : globalQuoteSelect.value,
+            format: format,
+            tableName: sqlTableNameInput.value || 'my_table'
         }
     });
+}
 
-    const csvString = allRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+function downloadFile(content, filename, type) {
+    const blob = new Blob([content], { type: type + ';charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `etl_data_${new Date().getTime()}.csv`;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
 
-function escapeCSV(str, separator, quoteChar) {
-    if (!quoteChar) return str;
-    if (str.includes(separator) || str.includes(quoteChar) || str.includes('\n') || str.includes('\r')) {
-        const escapedContent = str.split(quoteChar).join(quoteChar + quoteChar);
-        return `${quoteChar}${escapedContent}${quoteChar}`;
-    }
-    return str;
-}
+// --- Event Listeners ---
 
+addColumnBtn.addEventListener('click', () => {
+    saveCurrentSegmentState();
+    appState.segments.forEach(seg => {
+        seg.columns.push({ name: 'Nueva Columna', type: 'text', config: {} });
+    });
+    renderColumns();
+    requestPreviewUpdate();
+});
+
+generateBtn.addEventListener('click', generateData);
+
+exportBtn.addEventListener('click', () => {
+    saveCurrentSegmentState();
+    const exportData = {
+        version: 1,
+        createdAt: new Date().toISOString(),
+        global: {
+            separator: globalSeparatorSelect.value,
+            quote: globalQuoteSelect.value
+        },
+        segments: appState.segments
+    };
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    downloadFile(jsonStr, `config_csv_generator_${new Date().getTime()}.json`, 'application/json');
+});
+
+importBtn.addEventListener('click', () => {
+    importInput.click();
+});
+
+importInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        try {
+            const data = JSON.parse(ev.target.result);
+            if (data.segments) {
+                appState.segments = data.segments;
+                appState.activeSegmentId = data.segments[0].id;
+                if (data.global) {
+                    globalSeparatorSelect.value = data.global.separator || ',';
+                    globalQuoteSelect.value = data.global.quote || '"';
+                }
+                renderSegmentTabs();
+                renderColumns();
+                requestPreviewUpdate();
+                alert('Configuración importada exitosamente.');
+            } else {
+                alert('Archivo de configuración inválido.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error al leer el archivo de configuración.');
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+});
+
+addSegmentBtn.addEventListener('click', () => {
+    saveCurrentSegmentState();
+    const newId = `seg-${appState.segments.length + 1}`;
+    const current = getActiveSegment();
+    const clonedCols = JSON.parse(JSON.stringify(current.columns));
+    appState.segments.push({
+        id: newId,
+        name: `Segmento ${appState.segments.length + 1}`,
+        rows: 50,
+        columns: clonedCols
+    });
+    appState.activeSegmentId = newId;
+    renderSegmentTabs();
+    renderColumns();
+    requestPreviewUpdate();
+});
+
+deleteSegmentBtn.addEventListener('click', () => {
+    if (appState.segments.length <= 1) return;
+    const idx = appState.segments.findIndex(s => s.id === appState.activeSegmentId);
+    appState.segments.splice(idx, 1);
+    appState.activeSegmentId = appState.segments[Math.max(0, idx - 1)].id;
+    renderSegmentTabs();
+    renderColumns();
+    requestPreviewUpdate();
+});
+
+rowCountInput.addEventListener('change', () => {
+    saveCurrentSegmentState();
+    requestPreviewUpdate();
+});
+
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('toggle-btn')) {
+        e.target.classList.toggle('active');
+        saveCurrentSegmentState();
+        requestPreviewUpdate();
+    }
+});
+
+window.setLanguage = (lang) => {
+    currentLang = lang;
+    document.getElementById('lang-es').classList.toggle('active', lang === 'es');
+    document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+    updateUILanguage();
+};
 
 // --- Start ---
-renderSegmentTabs();
-renderColumns();
+setLanguage('es');
